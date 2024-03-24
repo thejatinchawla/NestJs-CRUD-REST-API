@@ -19,14 +19,27 @@ export class AuthService {
       return user;
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code == 'P2 002') {
+        if (error.code == 'P2002') {
           throw new ForbiddenException('Credentials are already been taken');
         }
       }
       throw error;
     }
   }
-  signin() {
-    return 'im signed in';
+  async signin(dto: AuthDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
+
+    const pwMatch = await argon.verify(user.hash, dto.password);
+
+    if (!user || !pwMatch) {
+      throw new ForbiddenException('Incorrect Credentials');
+    }
+    delete user.hash;
+
+    return user;
   }
 }
